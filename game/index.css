@@ -1,0 +1,23 @@
+body {
+  /* width: 100vw;
+  heigh: 100vh; */
+  /* margin: 4px; */
+}
+
+.canvas-container {
+  display: flex;
+  justify-content: center;
+}
+
+.title {
+  display: flex;
+  justify-content: center;
+}
+
+.show-game {
+  background: url("./images/backgrounds/blue_stars.gif");
+}
+
+/* #canvas {
+  background: url("./images/backgrounds/blue_stars.gif");
+} */
