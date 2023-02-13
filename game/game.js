@@ -1,36 +1,45 @@
 var canvas = document.getElementById("canvas");
 var cx = canvas.getContext("2d");
-var startTime = Date.now();
 canvas.width = 1296;
 canvas.height = 472;
 
 var background = new Image();
-background.src = "./images/backgrounds/game_background.png";
-
-var background_stars = new Image();
-var starsFrame = 0;
-// var stars_max_frame = 43;
-background_stars.src = "./images/backgrounds/blue_stars.gif";
-// background_stars.onload = function () {
-//   cx.drawImage(background_stars, 0, 0, 620, 472);
-//   cx.drawImage(background_stars, 620, 0, 620, 472);
-// };
-
-// var background_milky_way = new Image();
-// background_milky_way.src = "./images/backgrounds/blue_milky_way.gif";
-// background_milky_way.onload = function () {
-//   cx.drawImage(background_milky_way, 620, 0, 620, 240);
-// };
-
+var playerHealth = {
+  full: new Image(),
+  breaking1: new Image(),
+  breaking2: new Image(),
+  breaking3: new Image(),
+  breaking4: new Image(),
+  broken: new Image(),
+};
 var platform = new Image();
-platform.src = "./images/warped_city_files/ENVIRONMENT/platform.png";
 var basePlatWidth = 46;
 var basePlatHeight = 16;
-
 var platformCenter = new Image();
-platformCenter.src =
-  "./images/warped_city_files/ENVIRONMENT/platform_center.png";
 var centerPlatWidth = 30;
+
+function initImages() {
+  background.src = "./images/backgrounds/game_background.png";
+  platform.src = "./images/warped_city_files/ENVIRONMENT/platform.png";
+  platformCenter.src =
+    "./images/warped_city_files/ENVIRONMENT/platform_center.png";
+  var playerHealthArr = Object.entries(playerHealth);
+
+  for (let i = 0; i < playerHealthArr.length; i++) {
+    var [type, image] = playerHealthArr[i];
+
+    if (i != 0 && i != playerHealthArr.length - 1) {
+      image.src = `./images/health_hearts/damage_${i}.png`;
+      playerHealth[image] = image;
+    } else if (i == 0) {
+      image.src = "./images/health_hearts/full_heart.png";
+      playerHealth[type] = image;
+    } else if (i == playerHealthArr.length - 1) {
+      image.src = "./images/health_hearts/broken.png";
+      playerHealth[type] = image;
+    }
+  }
+}
 
 var platforms = [
   { x: 400, y: 360, w: basePlatWidth * 2, h: basePlatHeight },
@@ -76,14 +85,14 @@ function createFloor() {
 
 // for testing
 var playerJoined = true;
+var secondPlayerJoined = true;
 
 var players = {};
-var buck, player2;
+var buck, buck2;
 var that = this;
 var keys = {};
 
 var game;
-
 function animate() {
   cx.clearRect(0, 0, canvas.width, canvas.height);
   // cx.drawImage(background, 0, 0, canvas.width, canvas.height);
@@ -96,12 +105,15 @@ function animate() {
   buildPlatforms();
   checkPlayerContact();
   detectCollisionWithElements();
+  healthDisplay();
 
   game = requestAnimationFrame(animate);
 }
 
 function detectCollisionWithElements() {
   var playersArray = Object.values(players);
+  detectPlayerAttackPlayer(playersArray[0].char, playersArray[1].char);
+  detectPlayerAttackPlayer(playersArray[1].char, playersArray[0].char);
   for (var i = 0; i < playersArray.length; i++) {
     var { char } = playersArray[i];
     for (var j = 0; j < platforms.length; j++) {
@@ -119,7 +131,13 @@ function createPlayer() {
     // players.player= [];
     // players.push(buck);
     playerJoined = false;
-    console.log(players);
+  }
+
+  if (secondPlayerJoined) {
+    buck2 = new Buck();
+    buck2.init();
+    players.player2 = { char: buck2, keys: [] };
+    secondPlayerJoined = false;
   }
 }
 
@@ -138,112 +156,227 @@ function checkPlayerContact() {
 }
 
 function showCharacter() {
-  var playersArray = Object.entries(players);
+  var playersArray = Object.values(players);
 
   for (var i = 0; i < playersArray.length; i++) {
-    var [name, { char }] = playersArray[i];
+    var { char, keys } = playersArray[i];
     char.draw();
   }
 }
 
+function healthDisplay() {
+  var playersArr = Object.values(players);
+  var healthDisplayHeight = 20;
+  var healthDisplayWidth1 = 20;
+  var healthDisplayWidth2 = 1150;
+  var healthSlots = 5;
+  var { char: player1 } = playersArr[0];
+  var { char: player2 } = playersArr[1];
+  var brokenHearts1 = healthSlots - player1.health;
+  var brokenHearts2 = healthSlots - player2.health;
+
+  for (var i = 0; i < healthSlots; i++) {
+    if (i < player1.health) {
+      cx.drawImage(
+        playerHealth.full,
+        0,
+        0,
+        23,
+        20,
+        healthDisplayWidth1 + 12 * (i + i),
+        healthDisplayHeight,
+        23,
+        20
+      );
+    } else {
+      for (var j = 0; j < brokenHearts1; j++) {
+        cx.drawImage(
+          playerHealth.broken,
+          0,
+          0,
+          23,
+          20,
+          healthDisplayWidth1 + 12 * (i + i),
+          healthDisplayHeight,
+          23,
+          20
+        );
+      }
+    }
+
+    if (i < player2.health) {
+      cx.drawImage(
+        playerHealth.full,
+        0,
+        0,
+        23,
+        20,
+        healthDisplayWidth2 + 12 * (i + i),
+        healthDisplayHeight,
+        23,
+        20
+      );
+    } else {
+      for (var j = 0; j < brokenHearts2; j++) {
+        cx.drawImage(
+          playerHealth.broken,
+          0,
+          0,
+          23,
+          20,
+          healthDisplayWidth2 + 12 * (i + i),
+          healthDisplayHeight,
+          23,
+          20
+        );
+      }
+    }
+  }
+}
+
 function updatePlayers() {
-  var playersArray = Object.entries(players);
+  var playersArr = Object.values(players);
   var gravity = 0.2;
   var friction = 0.9;
+  // console.log(player);
 
-  for (var i = 0; i < playersArray.length; i++) {
-    var [name, { char, keys }] = playersArray[i];
+  for (var i = 0; i < playersArr.length; i++) {
+    var { char, keys } = playersArr[i];
 
-    // var char = playerInfo;
+    if (keys.includes("Space") && !char.attacking) {
+      if (!char.attacking) {
+        char.attacking = true;
+        char.tickCounter = 0;
+      } else {
+      }
+    }
+    if (char.attacking) {
+      char.maxTick = 28;
+      char.spriteCharHeight = 23;
+      char.spriteCharWidth = 23;
+      char.w = 69;
+      char.h = 69;
+      if (char.facingRight) {
+        char.sprite.src = `./images/${char.name}/attacks_right.png`;
+      } else {
+        char.sprite.src = `./images/${char.name}/attacks_left.png`;
+      }
+      char.tickCounter += 1;
+
+      if (char.tickCounter > char.maxTick / char.speed) {
+        char.tickCounter = 0;
+        if (char.frame < 5) {
+          char.frame++;
+          console.log(char.frame);
+        } else {
+          char.frame = 0;
+          char.maxTick = 22;
+          char.tickCounter = 0;
+          char.attacking = false;
+        }
+      }
+    } else {
+      char.spriteCharHeight = 19;
+      char.spriteCharWidth = 14;
+      char.w = 42;
+      char.h = 69;
+      char.maxTick = 22;
+    }
+
     if (keys.includes("ArrowUp")) {
       if (!char.jumping && char.grounded) {
+        char.spriteCharHeight = 19;
+        char.spriteCharWidth = 14;
         console.log("jump");
         char.jumping = true;
         char.grounded = false;
         char.velY = -(char.speed / 2 + 5.5);
       }
-      // test for direction char is facing
     }
 
     if (keys.includes("ArrowRight")) {
-      char.spriteCharHeight = 20;
-
-      // if (keys.includes("ArrowRight") && !keys.includes("ArrowLeft")) {
       char.facingRight = true;
       // if standing still, increase velocity (by 1) to the right
       if (char.velX < char.speed) {
         char.velX++;
       }
 
-      // test for direction char is facing and if jumping
-      if (!char.jumping) {
-        char.sprite.src = "./images/buck_borris/run_right.png";
+      if (!char.attacking) {
+        char.spriteCharHeight = 20;
 
-        char.tickCounter += 1;
+        // test for direction char is facing and if jumping
+        if (!char.jumping) {
+          char.sprite.src = `./images/${char.name}/run_right.png`;
 
-        if (char.tickCounter > char.maxTick / char.speed) {
-          char.tickCounter = 0;
+          char.tickCounter += 1;
 
-          if (char.frame == 0 || char.frame == 1 || char.frame == 2) {
-            char.frame++;
-          } else {
-            char.frame = 0;
+          if (char.tickCounter > char.maxTick / char.speed) {
+            char.tickCounter = 0;
+
+            if (char.frame < 3) {
+              char.frame++;
+            } else {
+              char.frame = 0;
+            }
           }
         }
       }
     }
 
     if (keys.includes("ArrowLeft")) {
-      // if (keys.includes("ArrowLeft") && !keys.includes("ArrowRight")) {
-      // if standing still, increase velocity (by 1) to the left
-      char.spriteCharHeight = 20;
       char.facingRight = false;
       if (char.velX > -char.speed) {
         char.velX--;
       }
 
-      // test for direction char is facing and if jumping
-      if (!char.jumping) {
-        char.sprite.src = "./images/buck_borris/run_left.png";
+      if (!char.attacking) {
+        char.spriteCharHeight = 20;
 
-        char.tickCounter += 1;
+        // test for direction char is facing and if jumping
+        if (!char.jumping) {
+          char.sprite.src = `./images/${char.name}/run_left.png`;
 
-        if (char.tickCounter > char.maxTick / char.speed) {
-          char.tickCounter = 0;
+          char.tickCounter += 1;
 
-          if (char.frame == 0 || char.frame == 1 || char.frame == 2) {
-            char.frame++;
-          } else {
-            char.frame = 0;
+          if (char.tickCounter > char.maxTick / char.speed) {
+            char.tickCounter = 0;
+
+            if (char.frame < 3) {
+              char.frame++;
+            } else {
+              char.frame = 0;
+            }
           }
         }
       }
     }
 
     if (char.jumping && !char.grounded) {
-      char.spiriteCharWidth = 15;
+      if (!char.attacking) {
+        char.spriteCharWidth = 15;
 
-      if (char.facingRight) {
-        char.frame = 0;
-        char.sprite.src = "./images/buck_borris/jump_right.png";
-      } else {
-        char.frame = 0;
-        char.sprite.src = "./images/buck_borris/jump_left.png";
+        if (char.facingRight) {
+          char.frame = 0;
+          char.sprite.src = `./images/${char.name}/jump_right.png`;
+        } else {
+          char.frame = 0;
+          char.sprite.src = `./images/${char.name}/jump_left.png`;
+        }
       }
     }
 
     if (char.grounded) {
       char.velY = 0;
-      // gravity = 0;
       if (
-        keys.length == 0 ||
-        (keys.includes("ArrowRight") && keys.includes("ArrowLeft"))
+        (keys.length == 0 ||
+          (keys.includes("ArrowRight") && keys.includes("ArrowLeft"))) &&
+        !char.attacking
       ) {
         char.spriteCharHeight = 19;
         if (char.facingRight) {
-          char.sprite.src = "./images/buck_borris/idle_right.png";
+          char.sprite.src = `./images/${char.name}/idle_right.png`;
         } else if (!char.facingRight) {
-          char.sprite.src = "./images/buck_borris/idle_left.png";
+          char.sprite.src = `./images/${char.name}/idle_left.png`;
         }
         char.tickCounter += 1;
 
@@ -260,10 +393,8 @@ function updatePlayers() {
 
       if (char.collisionDirection == null) {
         char.grounded = false;
-        // gravity = 6.8;
       }
     }
-    // console.log(char.velY);
 
     char.velX *= friction;
     char.velY += gravity;
@@ -272,10 +403,27 @@ function updatePlayers() {
   }
 }
 
+function detectPlayerAttackPlayer(playerA, playerB) {
+  var collisionDirection = detectCollision(playerA, playerB, "playerToPlayer");
+  console.log(playerA, collisionDirection, playerA.facingRight);
+
+  if (collisionDirection != null) {
+    if (playerA.attacking && !playerB.attacking) {
+    } else if (playerB.attacking && !playerB.attacking) {
+    } else if (playerA.attacking && playerB.attacking) {
+    } else {
+    }
+  } else {
+    console.log("not touching each other");
+  }
+}
+
 function bindKeys() {
   var playersArray = Object.entries(players);
   for (var i = 0; i < playersArray.length; i++) {
-    var [name, playerInfo] = playersArray[i];
+    // var [name, playerInfo] = playersArray[i];
+    var [name, playerInfo] = playersArray[0]; // changing to just controlling buck
+
     document.addEventListener("keydown", function (event) {
       if (!playerInfo.keys.includes(event.code)) {
         playerInfo.keys.push(event.code);
@@ -288,7 +436,9 @@ function bindKeys() {
   }
 }
 
-function Buck() {
+function Hero() {
+  // color is
+  this.name = "buck_borris2";
   this.x;
   this.y;
   this.sX = 0; // sprite position
@@ -297,7 +447,7 @@ function Buck() {
   this.velX = 0;
   this.velY = 0;
   this.frame;
-  this.w = 42;
+  this.w = 60;
   this.h = 69;
   this.spiriteCharWidth = 14; // 12
   this.spriteCharHeight = 19; // 18
@@ -309,6 +459,75 @@ function Buck() {
   this.tickCounter;
   this.maxTick;
   this.collisionDirection;
+  this.attacking;
+  this.damageTaken;
+  this.health;
+  this.blocking;
+
+  var that = this;
+
+  this.init = function () {
+    that.x = 450;
+    that.y = canvas.height - 150;
+    that.frame = 0;
+    that.tickCounter = 0;
+    that.maxTick = 22;
+    that.facingRight = true;
+    that.collisionDirection = null;
+    that.attacking = false;
+
+    that.sprite = new Image();
+    // right now just adding idle, what I can do is create an object, with the key
+    // being the image name and the value being the location
+    // this could also be done with switch case maybe
+    that.sprite.src = "./images/hero/idle_right.png";
+  };
+
+  this.draw = function () {
+    that.sY = that.frame * that.spriteCharHeight;
+
+    cx.drawImage(
+      that.sprite,
+      that.sX,
+      that.sY,
+      that.spiriteCharWidth,
+      that.spriteCharHeight,
+      that.x,
+      that.y,
+      that.w,
+      that.h
+    );
+  };
+}
+
+function Buck() {
+  if (players.player1) {
+    this.name = "buck_borris2";
+  } else {
+    this.name = "buck_borris";
+  }
+  this.x;
+  this.y;
+  this.sX = 0; // sprite position
+  this.sY = 0; // sprite position
+  this.speed = 3;
+  this.velX = 0;
+  this.velY = 0;
+  this.frame;
+  this.w = 42;
+  this.h = 69;
+  this.spriteCharWidth = 14; // 12
+  this.spriteCharHeight = 19; // 18
+  this.frame = 0;
+  this.sprite;
+  this.grounded = false;
+  this.jumping = false;
+  this.facingRight;
+  this.tickCounter;
+  this.maxTick;
+  this.collisionDirection;
+  this.attacking;
+  this.health;
 
   var that = this;
 
@@ -320,22 +539,27 @@ function Buck() {
     that.maxTick = 22;
     that.facingRight = true;
     that.collisionDirection = null;
+    that.attacking = false;
+    that.health = 5;
 
     that.sprite = new Image();
     // right now just adding idle, what I can do is create an object, with the key
     // being the image name and the value being the location
     // this could also be done with switch case maybe
-    that.sprite.src = "./images/buck_borris/idle_right.png";
+    if (players.player1) {
+      that.sprite.src = "./images/buck_borris/idle_right.png";
+    } else {
+      that.sprite.src = "./images/buck_borris2/idle_right.png";
+    }
   };
 
   this.draw = function () {
     that.sY = that.frame * that.spriteCharHeight;
-
     cx.drawImage(
       that.sprite,
       that.sX,
       that.sY,
-      that.spiriteCharWidth,
+      that.spriteCharWidth,
       that.spriteCharHeight,
       that.x,
       that.y,
@@ -376,11 +600,18 @@ function boundaries() {
 }
 
 function detectPlayerPlatformCollision(player, platform) {
-  player.collisionDirection = detectCollision(player, platform);
+  var { collisionDirection, offsetX, offsetY } = detectCollision(
+    player,
+    platform,
+    "playerToPlat"
+  );
+  player.collisionDirection = collisionDirection;
+  // player.collisionDirection = detectCollision(player, platform);
   // essentially the distance from one element (player) from another (platform)
   // console.log(player, platform);
 
   if (player.collisionDirection == "below") {
+    player.y -= offsetY;
     player.grounded = true;
     player.jumping = false;
   }
@@ -389,26 +620,33 @@ function detectPlayerPlatformCollision(player, platform) {
     player.velY *= -1;
   }
   // check if the player is touching the side
-  if (
-    player.collisionDirection == "left" ||
-    player.collisionDirection == "right"
-  ) {
-    player.velX = 0;
+  if (player.collisionDirection == "left") {
+    player.x += offsetX;
+
+    // player.velX = 0;
+    player.jumping = false;
+  } else if (player.collisionDirection == "right") {
+    player.x -= offsetX;
     player.jumping = false;
   }
 }
 
-function detectCollision(itemA, itemB) {
+function detectCollision(itemA, itemB, type) {
   var collisionDirection = null;
+  var addedWidths, addedHeights;
   // essentially the distance from one element (player) from another (platform)
   let distance = {
-    vectorX: itemA.x + (itemA.w - 10) / 2 - (itemB.x + itemB.w / 2),
+    vectorX: itemA.x + itemA.w / 2 - (itemB.x + itemB.w / 2),
     vectorY: itemA.y + itemA.h / 2 - (itemB.y + itemB.h / 2),
   };
 
-  // adding half of each objects width together
-  var addedWidths = itemA.w / 2 + itemB.w / 2 - 15;
-  var addedHeights = itemA.h / 2 + itemB.h / 2;
+  // adding half of each objects width together, depending on the type adjust sizes
+  if (type == "playerToPlat") {
+    addedWidths = itemA.w / 2 + itemB.w / 2 - 15;
+  } else {
+    addedWidths = itemA.w / 2 + itemB.w / 2;
+  }
+  addedHeights = itemA.h / 2 + itemB.h / 2;
 
   // if the x and y distance between the two items is less than the addedWidths/addedHeights,
   // there must have been a collision
@@ -428,19 +666,16 @@ function detectCollision(itemA, itemB) {
         collisionDirection = "above";
       } else if (distance.vectorY < 0) {
         collisionDirection = "below";
-        itemA.y -= offsetY;
       }
     } else {
       if (distance.vectorX > 0) {
         collisionDirection = "left";
-        itemA.x += offsetX;
       } else {
         collisionDirection = "right";
-        itemA.x -= offsetX;
       }
     }
   }
-  return collisionDirection;
+  return { collisionDirection, offsetX, offsetY };
 
   // console.log(platform);
   // var xPlayer = player.x;
@@ -507,4 +742,8 @@ function buildPlatforms() {
   //   cx.fillRect(0, canvas.height - platHeight, platWidth, platHeight);
 }
 createFloor();
+
+// testing
+
+initImages();
 animate();
