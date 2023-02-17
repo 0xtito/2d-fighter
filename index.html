@@ -3,14 +3,21 @@
 <html>
   <head>
     <link rel="stylesheet" type="text/css" href="./index.css" />
+    <script src="/socket.io/socket.io.js"></script>
   </head>
   <body>
-    <h2 class="title">Penguin Dueling School</h2>
+    <div class="title-container">
+      <h2 class="title">Penguin Dueling School</h2>
+      <button onclick="joinGame()" class="btn join-game">Join</button>
+      <button onclick="quitGame()" class="btn quit-game">Quit</button>
+    </div>
 
     <div class="canvas-container">
       <canvas id="canvas" class="show-game"></canvas>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
+    <script src="imagePreloader.js"></script>
     <script src="game.js"></script>
   </body>
 </html>
