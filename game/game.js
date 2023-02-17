@@ -23,7 +23,7 @@ function initImages() {
   platform.src = "./images/warped_city_files/ENVIRONMENT/platform.png";
   platformCenter.src =
     "./images/warped_city_files/ENVIRONMENT/platform_center.png";
-  var playerHealthArr = Object.entries(playerHealth);
+  var playerHealthArr = Object.entries(v);
 
   for (let i = 0; i < playerHealthArr.length; i++) {
     var [type, image] = playerHealthArr[i];
@@ -238,18 +238,19 @@ function updatePlayers() {
   var playersArr = Object.values(players);
   var gravity = 0.2;
   var friction = 0.9;
-  // console.log(player);
 
   for (var i = 0; i < playersArr.length; i++) {
     var { char, keys } = playersArr[i];
 
-    if (keys.includes("Space") && !char.attacking) {
+    // if (!char.invulnerable) {
+    // attack
+    if (keys.includes("Space") && !char.attacking && !char.invulnerable) {
       if (!char.attacking) {
         char.attacking = true;
         char.tickCounter = 0;
-      } else {
       }
     }
+    // currently attacking
     if (char.attacking) {
       char.maxTick = 28;
       char.spriteCharHeight = 23;
@@ -267,7 +268,6 @@ function updatePlayers() {
         char.tickCounter = 0;
         if (char.frame < 5) {
           char.frame++;
-          console.log(char.frame);
         } else {
           char.frame = 0;
           char.maxTick = 22;
@@ -283,11 +283,42 @@ function updatePlayers() {
       char.maxTick = 22;
     }
 
+    if (char.invulnerable) {
+      if (char.facingRight) {
+        char.sprite.src = `./images/${char.name}/damaged_right.png`;
+      } else {
+        char.sprite.src = `./images/${char.name}/damaged_left.png`;
+      }
+
+      char.spriteCharHeight = 16;
+      char.spriteCharWidth = 16;
+      // console.log("hey", char.invulnerable, char.tickCounter);
+
+      char.tickCounter += 1;
+
+      if (char.tickCounter > char.maxTick / char.speed) {
+        char.tickCounter = 0;
+        // console.log("yooooo");
+
+        if (char.frame < 5) {
+          char.frame++;
+        } else {
+          // setTimeout(() => {
+          char.invulnerable = false;
+          char.health -= 1;
+          // }, 1000);
+          console.log("skip frame");
+          char.frame = 0;
+        }
+      }
+    }
+
+    // console.log(char.name, char.invulnerable);
+
     if (keys.includes("ArrowUp")) {
       if (!char.jumping && char.grounded) {
         char.spriteCharHeight = 19;
         char.spriteCharWidth = 14;
-        console.log("jump");
         char.jumping = true;
         char.grounded = false;
         char.velY = -(char.speed / 2 + 5.5);
@@ -301,7 +332,7 @@ function updatePlayers() {
         char.velX++;
       }
 
-      if (!char.attacking) {
+      if (!char.attacking && !char.invulnerable) {
         char.spriteCharHeight = 20;
 
         // test for direction char is facing and if jumping
@@ -329,7 +360,7 @@ function updatePlayers() {
         char.velX--;
       }
 
-      if (!char.attacking) {
+      if (!char.attacking && !char.invulnerable) {
         char.spriteCharHeight = 20;
 
         // test for direction char is facing and if jumping
@@ -352,7 +383,7 @@ function updatePlayers() {
     }
 
     if (char.jumping && !char.grounded) {
-      if (!char.attacking) {
+      if (!char.attacking && !char.invulnerable) {
         char.spriteCharWidth = 15;
 
         if (char.facingRight) {
@@ -370,9 +401,11 @@ function updatePlayers() {
       if (
         (keys.length == 0 ||
           (keys.includes("ArrowRight") && keys.includes("ArrowLeft"))) &&
-        !char.attacking
+        !char.attacking &&
+        !char.invulnerable
       ) {
         char.spriteCharHeight = 19;
+        char.spriteCharWidth = 14;
         if (char.facingRight) {
           char.sprite.src = `./images/${char.name}/idle_right.png`;
         } else if (!char.facingRight) {
@@ -395,6 +428,30 @@ function updatePlayers() {
         char.grounded = false;
       }
     }
+    // }
+    // else {
+    // if (char.facingRight) {
+    //   char.sprite.src = `./images/${char.name}/damaged_right.png`;
+    // } else {
+    //   char.sprite.src = `./images/${char.name}/damaged_left.png`;
+    // }
+    // char.spriteCharHeight = 16;
+    // char.spriteCharWidth = 16;
+    // // console.log("hey", char.invulnerable, char.tickCounter);
+    // char.tickCounter += 1;
+    // if (char.tickCounter > char.maxTick / char.speed) {
+    //   char.tickCounter = 0;
+    //   // console.log("yooooo");
+    //   if (char.frame < 5) {
+    //     char.frame++;
+    //   } else {
+    //     char.invulnerable = false;
+    //     console.log("skip frame");
+    //     char.health -= 1;
+    //     char.frame = 0;
+    //   }
+    // }
+    // }
 
     char.velX *= friction;
     char.velY += gravity;
@@ -403,18 +460,60 @@ function updatePlayers() {
   }
 }
 
-function detectPlayerAttackPlayer(playerA, playerB) {
-  var collisionDirection = detectCollision(playerA, playerB, "playerToPlayer");
-  console.log(playerA, collisionDirection, playerA.facingRight);
+function takenDamage(player) {
+  // The player will become invulnerable for 2 seconds, and will lose one heart,
+  // if the player runs out of hearts, the game will end
+  // buck damaged sprite size 15 x 16
+  // flash the damaged buck frames two times
+  // the player can't move while this is happening
+  // but, once done the player is invulnerable for 2 seconds
+  // just so the other player cant spam attack him
+  if (!player.invulnerble) {
+    player.invulnerable = true;
+  }
+}
 
+function detectPlayerAttackPlayer(playerA, playerB) {
+  var { collisionDirection, offsetX, offsetY } = detectCollision(
+    playerA,
+    playerB,
+    "playerToPlayer"
+  );
+  // console.log(playerA, collisionDirection, playerA.facingRight);
+
+  // checking if they are event making contact
   if (collisionDirection != null) {
-    if (playerA.attacking && !playerB.attacking) {
-    } else if (playerB.attacking && !playerB.attacking) {
-    } else if (playerA.attacking && playerB.attacking) {
-    } else {
+    // checking that neither of them are invulnerable, if so punches wont register.
+    if (!playerA.invulnerable && !playerB.invulnerable) {
+      // playerA is attacking playerB (add in check to make sure playerB is not blocking)
+      if (playerA.attacking && !playerB.attacking) {
+        // hitting from the left and facing the right direction
+        if (playerA.facingRight && collisionDirection == "right") {
+          playerA.velX -= offsetX;
+          playerB.invulnerable = true;
+          playerB.frame = 0;
+          console.log(`${playerA.name} punched ${playerB.name}`);
+        } else if (!playerA.facingRight && collisionDirection == "left") {
+          playerA.velX += offsetX;
+          playerB.invulnerable = true;
+          playerB.frame = 0;
+          console.log(`${playerA.name} punched ${playerB.name} facing left`);
+        }
+      }
+      // playerB is attacking playerA (add in check to make sure playerA is not blocking)
+      else if (playerB.attacking && !playerB.attacking) {
+        if (playerB.facingRight && collisionDirection == "right") {
+          console.log(`${playerB.name} punched ${playerA.name}`);
+        }
+      } else if (playerA.attacking && playerB.attacking) {
+        // if they attack each other at the same time, they both just get sent flying back
+        // as if they parried one another
+      } else {
+        // neither are attacking, but they are colliding
+      }
     }
   } else {
-    console.log("not touching each other");
+    // console.log("not touching each other");
   }
 }
 
@@ -520,6 +619,7 @@ function Buck() {
   this.spriteCharHeight = 19; // 18
   this.frame = 0;
   this.sprite;
+
   this.grounded = false;
   this.jumping = false;
   this.facingRight;
@@ -528,6 +628,7 @@ function Buck() {
   this.collisionDirection;
   this.attacking;
   this.health;
+  this.invulnerable;
 
   var that = this;
 
@@ -541,6 +642,7 @@ function Buck() {
     that.collisionDirection = null;
     that.attacking = false;
     that.health = 5;
+    that.invulnerable = false;
 
     that.sprite = new Image();
     // right now just adding idle, what I can do is create an object, with the key
@@ -643,6 +745,8 @@ function detectCollision(itemA, itemB, type) {
   // adding half of each objects width together, depending on the type adjust sizes
   if (type == "playerToPlat") {
     addedWidths = itemA.w / 2 + itemB.w / 2 - 15;
+  } else if (type == "playerToPlayer") {
+    addedWidths = itemA.w / 2 - 5 + itemB.w / 2 - 5;
   } else {
     addedWidths = itemA.w / 2 + itemB.w / 2;
   }
@@ -676,55 +780,7 @@ function detectCollision(itemA, itemB, type) {
     }
   }
   return { collisionDirection, offsetX, offsetY };
-
-  // console.log(platform);
-  // var xPlayer = player.x;
-  // var yPlayer = player.y;
-  // var wPlayer = player.width;
-  // var hPlayer = player.height;
-
-  // var xPlatform = platform.x;
-  // var yPlatform = platform.y;
-  // var wPlatform = platform.w;
-  // var hPlatform = platform.h;
-
-  // if (
-  //   xPlayer + wPlayer > xPlatform &&
-  //   xPlayer < xPlatform + wPlatform &&
-  //   yPlayer + hPlayer > yPlatform &&
-  //   yPlayer < yPlatform + hPlatform
-  // ) {
-  // checking if player is touching the top of the platform
-  // if (yPlayer + hPlayer > yPlatform) {
-  //   console.log("touched top");
-
-  //   player.grounded = true;
-  //   player.jumping = false;
-  //   player.y = yPlatform - hPlayer;
-  // }
-  // checking if the player is touching under the platform
-  // else if (yPlayer < yPlatform + hPlatform) {
-  //   console.log("touched bottom");
-
-  // player.velY = 0;
-
-  //   player.y = yPlatform + hPlatform + 0.1;
-  // }
-  // check if the player is touching the side
-  //   else if (xPlayer + wPlayer == xPlatform) {
-  //     console.log("touched side");
-  //     player.velX = -1;
-  //     player.x = player.x;
-  //   }
-  // }
-  // else {
-  //   if (player.grounded && !player.jumping && player.y < canvas.height) {
-  //     player.grounded = false;
-  //   }
-  // }
 }
-
-// function collisionCheck()
 
 function buildPlatforms() {
   var width = 51;
